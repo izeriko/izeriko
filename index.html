@@ -1,26 +1,210 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Loading...</title>
-  <style>
-    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-    #start {
-      position: fixed; inset: 0; width: 100%; height: 100%;
-      background: #111; color: #fff; font: 24px sans-serif;
-      border: 0; cursor: pointer;
-    }
-    iframe { width: 100%; height: 100%; border: 0; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Birthday countdown</title>
+<meta property="og:title" content="Birthday countdown">
+<meta property="og:description" content="Counting down to sunrise on November 6th.">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Fraunces:ital,wght@1,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #14123a;
+    --dusk: #3b2a6e;
+    --rose: #ff7a8a;
+    --amber: #ffc46b;
+    --cream: #fff4e0;
+    --p: 0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--night); color: var(--cream); overflow: hidden;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  }
+  .sky, .dawn, .stars, .sun, .hills { position: fixed; left: 0; width: 100%; pointer-events: none; }
+  .sky { inset: 0; background: linear-gradient(#0b0a28, var(--night) 45%, var(--dusk)); }
+  .dawn { inset: 0; opacity: var(--p); background: linear-gradient(#3b2a6e 0%, #c25a8a 55%, #ffb46b 100%); }
+  .stars { top: 0; height: 70%; opacity: calc(1 - var(--p) * .92); }
+  .star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: var(--cream); animation: twinkle 3s ease-in-out infinite; }
+  @keyframes twinkle { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+  .sun {
+    bottom: 0; height: 0; display: flex; justify-content: center;
+  }
+  .sun i {
+    position: absolute; bottom: 0; width: min(46vw, 300px); aspect-ratio: 1; border-radius: 50%;
+    background: radial-gradient(circle, #fff6d6 0 38%, var(--amber) 62%, rgba(255,122,138,0) 72%);
+    box-shadow: 0 0 120px 40px rgba(255,196,107,.45);
+    transform: translateY(calc((1 - var(--p)) * 85vh + 40%));
+    animation: glow 4s ease-in-out infinite;
+  }
+  @keyframes glow { 50% { filter: brightness(1.12); } }
+  .hills { bottom: 0; height: 28vh; }
+  .hills svg { width: 100%; height: 100%; display: block; }
+  main {
+    position: relative; z-index: 2; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px 16px 22vh; text-align: center;
+  }
+  .kicker { font-size: clamp(1rem, 3.5vw, 1.3rem); opacity: .85; margin: 0 0 4px; }
+  h1 {
+    font: italic 600 clamp(2.6rem, 12vw, 6rem)/1 "Fraunces", Georgia, serif;
+    margin: 0 0 clamp(20px, 5vh, 44px); text-shadow: 0 4px 30px rgba(0,0,0,.35);
+  }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; max-width: 720px; }
+  .unit { padding: 0 4px; }
+  .unit + .unit { border-left: 1px solid rgba(255,244,224,.28); }
+  .num { font-weight: 800; font-size: clamp(2.2rem, 12vw, 5rem); line-height: 1; text-shadow: 0 4px 24px rgba(0,0,0,.35); }
+  .num.pop { animation: pop .35s ease-out; }
+  @keyframes pop { 0% { transform: translateY(-8px); opacity: .4; } 100% { transform: none; opacity: 1; } }
+  .lbl { font-size: clamp(.8rem, 3vw, 1.05rem); margin-top: 8px; opacity: .8; }
+  .when { margin: clamp(18px, 4vh, 34px) 0 0; font-size: clamp(.9rem, 3vw, 1.05rem); opacity: .85; line-height: 1.6; }
+  .party { font: italic 600 clamp(2.4rem, 11vw, 5.5rem)/1.05 "Fraunces", Georgia, serif; }
+  canvas { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .star, .sun i, .num.pop { animation: none; } }
+</style>
 </head>
 <body>
-  <button id="start">Izeriko'secret thingy</button>
-  <script>
-    document.getElementById("start").addEventListener("click", function () {
-      document.body.innerHTML =
-        '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&controls=0" ' +
-        'allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>';
+<div class="sky"></div>
+<div class="dawn"></div>
+<div class="stars" id="stars"></div>
+<div class="sun"><i></i></div>
+<div class="hills" aria-hidden="true">
+  <svg viewBox="0 0 1000 200" preserveAspectRatio="none">
+    <path d="M0 90 C150 30 300 110 480 70 C650 30 820 100 1000 55 L1000 200 L0 200Z" fill="#241a57"/>
+    <path d="M0 140 C200 90 350 160 520 125 C700 90 850 150 1000 120 L1000 200 L0 200Z" fill="#0d0b26"/>
+  </svg>
+</div>
+<main>
+  <p class="kicker" id="kicker"></p>
+  <h1 id="title"></h1>
+  <div id="out"></div>
+  <p class="when" id="when"></p>
+</main>
+<canvas id="confetti"></canvas>
+<script>
+(function () {
+  // ---- Settings (edit only these) ----
+  var NAME = "Izeriko";            // optional, e.g. "Izeriko"
+  var TURNING_AGE = 17;     // the age you turn...
+  var TURNING_YEAR = 2026;  // ...in this year. Later years add +1 automatically.
+  var MONTH = 11, DAY = 6;  // November 6th
+  var HOUR_FR = 6;          // 06:00 in France (CET, UTC+1, always in effect on Nov 6)
+  var CELEBRATE_HOURS = 24; // how long the party screen stays up
+  var RUN_UP_DAYS = 30;     // the sun starts rising this many days before
+
+  var DAY_MS = 86400000;
+  function target(y) { return Date.UTC(y, MONTH - 1, DAY, HOUR_FR - 1, 0, 0); }
+  function ordinal(n) {
+    var s = ["th", "st", "nd", "rd"], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+
+  // stars
+  var starsEl = document.getElementById("stars");
+  for (var i = 0; i < 80; i++) {
+    var s = document.createElement("span");
+    s.className = "star";
+    s.style.left = Math.random() * 100 + "%";
+    s.style.top = Math.random() * 100 + "%";
+    s.style.animationDelay = (Math.random() * 3).toFixed(2) + "s";
+    s.style.transform = "scale(" + (0.6 + Math.random() * 1.1).toFixed(2) + ")";
+    starsEl.appendChild(s);
+  }
+
+  var out = document.getElementById("out");
+  var titleEl = document.getElementById("title");
+  var kickerEl = document.getElementById("kicker");
+  var whenEl = document.getElementById("when");
+  var labels = ["days", "hours", "minutes", "seconds"];
+  var mode = "";
+
+  function buildGrid() {
+    out.className = "grid";
+    out.innerHTML = labels.map(function (l) {
+      return '<div class="unit"><div class="num" id="n-' + l + '">0</div><div class="lbl">' + l + "</div></div>";
+    }).join("");
+  }
+
+  function state() {
+    var now = Date.now(), y = new Date(now).getUTCFullYear(), t = target(y);
+    if (now >= t + DAY_MS) { y++; t = target(y); }
+    return { now: now, year: y, t: t, age: TURNING_AGE + (y - TURNING_YEAR) };
+  }
+
+  function tick() {
+    var st = state(), left = st.t - st.now;
+    var who = NAME ? NAME + " is " : "";
+    if (left <= 0 && left > -CELEBRATE_HOURS * 3600000) {
+      if (mode !== "party") {
+        mode = "party";
+        document.documentElement.style.setProperty("--p", 1);
+        kickerEl.textContent = "";
+        titleEl.textContent = "";
+        out.className = "";
+        out.innerHTML = '<div class="party">Happy ' + ordinal(st.age) + ' birthday' + (NAME ? ", " + NAME : "") + '!</div>';
+        whenEl.textContent = "Sunrise, 06:00 in France";
+        startConfetti();
+      }
+      return;
+    }
+    if (mode !== "count" || mode === "count" && out.dataset.year != st.year) {
+      mode = "count";
+      buildGrid();
+      out.dataset.year = st.year;
+      stopConfetti();
+      kickerEl.textContent = NAME ? NAME + " is" : "Counting down to";
+      titleEl.textContent = NAME ? "turning " + st.age : "turning " + st.age;
+      var local = new Date(st.t).toLocaleString([], { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      whenEl.innerHTML = "6 November " + st.year + ", 06:00 in France<br>Your time: " + local;
+    }
+    var p = Math.max(0, Math.min(1, 1 - left / (RUN_UP_DAYS * DAY_MS)));
+    document.documentElement.style.setProperty("--p", p.toFixed(4));
+    var s = Math.floor(left / 1000);
+    var v = [Math.floor(s / 86400), Math.floor(s % 86400 / 3600), Math.floor(s % 3600 / 60), s % 60];
+    labels.forEach(function (l, i) {
+      var el = document.getElementById("n-" + l);
+      var txt = i === 0 ? String(v[i]) : String(v[i]).padStart(2, "0");
+      if (el.textContent !== txt) {
+        el.textContent = txt;
+        if (i === 3) { el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); }
+      }
     });
-  </script>
+  }
+
+  // confetti
+  var cv = document.getElementById("confetti"), cx = cv.getContext("2d"), bits = [], raf = 0;
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function size() { cv.width = innerWidth; cv.height = innerHeight; }
+  addEventListener("resize", size); size();
+  function startConfetti() {
+    if (reduce || raf) return;
+    var cols = ["#ff7a8a", "#ffc46b", "#fff4e0", "#7fd6c8", "#a58cff"];
+    for (var i = 0; i < 140; i++) bits.push({
+      x: Math.random() * cv.width, y: -Math.random() * cv.height,
+      w: 6 + Math.random() * 6, h: 10 + Math.random() * 8,
+      vy: 1.5 + Math.random() * 2.5, vx: -1 + Math.random() * 2,
+      r: Math.random() * 6, vr: -.1 + Math.random() * .2, c: cols[i % cols.length]
+    });
+    (function loop() {
+      cx.clearRect(0, 0, cv.width, cv.height);
+      bits.forEach(function (b) {
+        b.x += b.vx; b.y += b.vy; b.r += b.vr;
+        if (b.y > cv.height + 20) { b.y = -20; b.x = Math.random() * cv.width; }
+        cx.save(); cx.translate(b.x, b.y); cx.rotate(b.r);
+        cx.fillStyle = b.c; cx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); cx.restore();
+      });
+      raf = requestAnimationFrame(loop);
+    })();
+  }
+  function stopConfetti() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0; bits = []; cx.clearRect(0, 0, cv.width, cv.height);
+  }
+
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
 </body>
 </html>
