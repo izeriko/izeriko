@@ -1,3 +1,1 @@
 #  Project
-
-![Loading...](rickroll.gif)
